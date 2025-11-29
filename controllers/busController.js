@@ -22,10 +22,7 @@ export const getAvailableBuses = async (req, res) => {
     if (userId) {
       // Show unoccupied buses + the bus assigned to THIS conductor
       buses = await Bus.find({
-        $or: [
-          { isOccupied: false },
-          { conductorId: userId }
-        ]
+        $or: [{ isOccupied: false }, { conductorId: userId }],
       });
     } else {
       // Fallback: only unoccupied
@@ -50,7 +47,6 @@ export const addBus = async (req, res) => {
   }
 };
 
-
 // DELETE a bus
 export const deleteBus = async (req, res) => {
   try {
@@ -65,7 +61,9 @@ export const deleteBus = async (req, res) => {
 // UPDATE bus info
 export const updateBus = async (req, res) => {
   try {
-    const updated = await Bus.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    const updated = await Bus.findByIdAndUpdate(req.params.id, req.body, {
+      new: true,
+    });
     res.json(updated);
   } catch (err) {
     console.error(err);
@@ -74,13 +72,13 @@ export const updateBus = async (req, res) => {
 };
 
 // update bus location
-export const updateBusLocation = async (req,res) =>{
+export const updateBusLocation = async (req, res) => {
   try {
     const { busId, lat, lng } = req.body;
     const updatedBusl = await Bus.findByIdAndUpdate(
       busId,
       { location: { lat, lng } },
-      {new:true},
+      { new: true }
     );
     res.json({
       success: true,
@@ -108,7 +106,58 @@ export const updateBusLocation = async (req,res) =>{
   // );
 
   // res.send(updatedBusl);
-}
+};
+
+export const stopSharingLocation = async (req, res) => {
+  try {
+    const { busId, userId } = req.body;
+
+    if (!busId || !userId) {
+      return res
+        .status(400)
+        .json({ success: false, message: "busId and userId are required" });
+    }
+
+    // fetch resources so we can return proper errors / result
+    const bus = await Bus.findById(busId);
+    if (!bus)
+      return res.status(404).json({ success: false, message: "Bus not found" });
+
+    const user = await User.findById(userId);
+    if (!user)
+      return res
+        .status(404)
+        .json({ success: false, message: "User not found" });
+
+    // Update the bus: stop sharing location and mark it available
+    const updatedBus = await Bus.findByIdAndUpdate(
+      busId,
+      {
+        location: { lat: null, lng: null },
+        isOccupied: false,
+        conductorId: null,
+      },
+      { new: true }
+    );
+
+    // Update the user: unassign bus
+    const updatedUser = await User.findByIdAndUpdate(
+      userId,
+      { busId: null },
+      { new: true }
+    );
+
+    return res.json({
+      success: true,
+      message: "Stopped sharing location and unassigned bus",
+      bus: updatedBus,
+      user: updatedUser,
+    });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ error: err.message });
+  }
+};
 
 // Assign bus to conductor
 
@@ -126,9 +175,9 @@ export const assignBus = async (req, res) => {
     if (action === "select") {
       // Check if user already has a bus
       if (user.busId) {
-        return res.status(400).json({ 
+        return res.status(400).json({
           success: false,
-          message: "You can only select one bus at a time" 
+          message: "You can only select one bus at a time",
         });
       }
 
@@ -138,9 +187,9 @@ export const assignBus = async (req, res) => {
         return res.status(404).json({ error: "Bus not found" });
       }
       if (bus.isOccupied) {
-        return res.status(400).json({ 
-          success: false, 
-          message: "Bus is already assigned to another conductor" 
+        return res.status(400).json({
+          success: false,
+          message: "Bus is already assigned to another conductor",
         });
       }
 
@@ -156,22 +205,27 @@ export const assignBus = async (req, res) => {
       return res.json({ success: true, bus: updatedBus });
     }
 
-   
     if (action === "unselect") {
-        if (!user.busId) {
-          return res.status(400).json({ message: "You are not assigned to any bus." });
-        } 
+      if (!user.busId) {
+        return res
+          .status(400)
+          .json({ message: "You are not assigned to any bus." });
+      }
 
-        if (user.busId.toString() !== busId) {
-          return res.status(400).json({ message: "You can only unselect your own assigned bus." });
-        }
+      if (user.busId.toString() !== busId) {
+        return res
+          .status(400)
+          .json({ message: "You can only unselect your own assigned bus." });
+      }
 
-        // Safe to unassign now
-        await Bus.findByIdAndUpdate(busId, { isOccupied: false, conductorId: null });
-        await User.findByIdAndUpdate(userId, { busId: null });
-        return res.json({ success: true });
-   }
-
+      // Safe to unassign now
+      await Bus.findByIdAndUpdate(busId, {
+        isOccupied: false,
+        conductorId: null,
+      });
+      await User.findByIdAndUpdate(userId, { busId: null });
+      return res.json({ success: true });
+    }
 
     res.status(400).json({ error: "Invalid action" });
   } catch (err) {
