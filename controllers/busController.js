@@ -159,6 +159,39 @@ export const stopSharingLocation = async (req, res) => {
   }
 };
 
+export const GetBusLocationById = async (req,res) => {
+  try{
+    
+    const {busId} = req.body;
+
+    const bus = await Bus.findById(busId);
+      if(!bus){
+        return res.status(404).json({ success: false, message: "Bus not found" });
+      }
+      if (!bus.location || bus.location.lat == null || bus.location.lng == null ){
+        return res.status(202).json({
+          success:false,
+          message: "location not available",
+          location:null
+        });
+      }
+
+      return res.json({
+        success:true,
+        message:"location found",
+        location:bus.location
+
+      });
+  }catch(err){
+    return res.status(500).json({
+      success:false,
+      message:"server error",
+      error:err.message
+    });
+
+  }
+};
+
 // Assign bus to conductor
 
 export const assignBus = async (req, res) => {
