@@ -161,7 +161,7 @@ export const stopSharingLocation = async (req, res) => {
 
 export const GetBusLocationById = async (req,res) => {
   try{
-    
+
     const {busId} = req.body;
 
     const bus = await Bus.findById(busId);
