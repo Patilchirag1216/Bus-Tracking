@@ -159,30 +159,27 @@ export const stopSharingLocation = async (req, res) => {
   }
 };
 
-export const GetBusLocationById = async (req,res) => {
-  try{
+export const GetBusLocationById = async (req, res) => {
+  try {
+    // support both GET /getbuslocationbyid/:id and POST { busId }
+    const id = req.params?.id || req.body?.busId;
 
-    const {busId} = req.body;
+    if (!id) {
+      return res.status(400).json({ success: false, message: 'bus id required' });
+    }
 
-
-    const bus = await Bus.findById(busId);
+    const bus = await Bus.findById(id);
       if(!bus){
         return res.status(404).json({ success: false, message: "Bus not found" });
       }
-      if (!bus.location || bus.location.lat == null || bus.location.lng == null ){
-        return res.status(202).json({
-          success:false,
-          message: "location not available",
-          location:null
-        });
-      }
+    if (!bus.location || bus.location.lat == null || bus.location.lng == null) {
+      return res.status(202).json({ success: false, message: 'location not available', location: null });
+    }
 
-      return res.json({
-        success:true,
-        message:"location found",
-        location:bus.location
-
-      });
+    return res.json({ success: true, message: 'location found', location: {
+                lat: bus.location.lat,
+                lng: bus.location.lng
+            } });
   }catch(err){
     return res.status(500).json({
       success:false,
