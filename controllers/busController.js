@@ -164,6 +164,7 @@ export const GetBusLocationById = async (req,res) => {
 
     const {busId} = req.body;
 
+
     const bus = await Bus.findById(busId);
       if(!bus){
         return res.status(404).json({ success: false, message: "Bus not found" });
